@@ -11,11 +11,12 @@ use aptos_sdk::types::LocalAccount;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
+#[derive(Debug, Clone)]
 pub struct BlueMove {
     client: &'static Client,
     contract_address: &'static str,
     gas_price: u64,
-    gas_limit: u64,    
+    gas_limit: u64,
 }
 
 impl BlueMove {
@@ -24,7 +25,7 @@ impl BlueMove {
             client,
             contract_address,
             gas_price,
-            gas_limit:10000,
+            gas_limit: 150000, //147116
         }
     }
 
@@ -43,7 +44,7 @@ impl BlueMove {
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_secs()
-                + 300000,
+                + 300,
             ChainId::new(1),
         )
         .sender(account.address())
