@@ -68,7 +68,7 @@ async fn main() {
     );
 
     let item_number = 1;
-
+    
     if bm.buy_bluemove_mft(&mut alice, item_number).await {
         println!("Buy success for {}", item_number);
     } else {
