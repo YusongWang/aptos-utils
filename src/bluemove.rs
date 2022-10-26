@@ -14,7 +14,6 @@ use std::time::UNIX_EPOCH;
 use serde::Deserialize;
 use serde::Serialize;
 
-
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NftMeta {
@@ -124,7 +123,7 @@ pub struct BlueMove {
     pub contract_address: String,
     pub token_address: String,
     pub mint_data: Option<MintData>,
-    pub nft_data:Option<NftMeta>,
+    pub nft_data: Option<NftMeta>,
     pub gas_price: u64,
     pub gas_limit: u64,
 }
@@ -138,7 +137,7 @@ impl BlueMove {
             gas_price,
             gas_limit: 150000, //147116
             mint_data: None,
-            nft_data:None,
+            nft_data: None,
         };
 
         blue.token_address = blue.get_token_address().await.unwrap();
@@ -166,9 +165,8 @@ impl BlueMove {
             None => None,
         }
     }
-    
+
     pub async fn get_token_data(&self) -> Option<NftMeta> {
-        
         match self
             .client
             .get_account_resource(
@@ -213,6 +211,18 @@ impl BlueMove {
         self.mint_data
             .as_ref()
             .map(|mint_data| mint_data.start_time_wl.parse::<u64>().unwrap() / 1000)
+    }
+
+    pub async fn get_end_time(&mut self) -> Option<u64> {
+        self.mint_data
+            .as_ref()
+            .map(|mint_data| mint_data.expired_time.parse::<u64>().unwrap() / 1000)
+    }
+
+    pub async fn get_end_time_wl(&mut self) -> Option<u64> {
+        self.mint_data
+            .as_ref()
+            .map(|mint_data| mint_data.expired_time_wl.parse::<u64>().unwrap() / 1000)
     }
 
     pub async fn buy_bluemove_mft(&self, account: &mut LocalAccount, items_number: u64) -> bool {

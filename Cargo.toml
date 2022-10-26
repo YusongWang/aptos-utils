@@ -7,7 +7,7 @@ edition = "2021"
 
 
 [dependencies]
-aptos-sdk = { git = "https://github.com/aptos-labs/aptos-core", branch = "testnet" }
+aptos-sdk = { git = "https://github.com/aptos-labs/aptos-core", branch = "mainnet" }
 url = "2.3.1"
 tokio = { version = "1.21.2", features = ["full"] }
 rand_core = "0.5.1"

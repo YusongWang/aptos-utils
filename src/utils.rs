@@ -1,8 +1,8 @@
-use chrono::{NaiveDateTime,FixedOffset};
+use chrono::{FixedOffset, NaiveDateTime};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn parse_timestamp_to_string(timestamp: i64) -> String {
-    NaiveDateTime::from_timestamp(timestamp+8 * 3600, 0).to_string()
+    NaiveDateTime::from_timestamp(timestamp + 8 * 3600, 0).to_string()
 }
 
 pub fn get_current_unix() -> u64 {
