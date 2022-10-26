@@ -5,9 +5,13 @@ use bluemove::BlueMove;
 use once_cell::sync::Lazy;
 
 use std::str::FromStr;
+use std::time::Duration;
+
 use url::Url;
 
 mod bluemove;
+mod utils;
+use utils::get_current_unix;
 
 static REST_CLIENT: Lazy<Client> = Lazy::new(|| {
     let url = Url::from_str(
@@ -22,6 +26,7 @@ static REST_CLIENT: Lazy<Client> = Lazy::new(|| {
 });
 
 fn genne_account() {
+    //TODO save to sqlite3.
     for _ in 0..100 {
         let acc = LocalAccount::generate(&mut rand::rngs::OsRng);
         println!(
@@ -35,25 +40,25 @@ fn genne_account() {
 #[tokio::main]
 async fn main() {
     //genne_account();
-
     if let Ok(()) = REST_CLIENT.health_check(100).await {
-        println!("Health status: Ok",);
+        //println!("Health status: Ok",);
     } else {
         println!("Node is down!!!");
     }
 
-    let bm = bluemove::BlueMove::new(
+    let mut bm = bluemove::BlueMove::new(
         &REST_CLIENT,
-        "0x793729b9511ca9e52122b5ea2fcfbfcd3c342b1fc48ee04ff652c3d5d4b66a44",
+        "0x793729b9511ca9e52122b5ea2fcfbfcd3c342b1fc48ee04ff652c3d5d4b66a44".to_string(),
         100,
-    );
+    )
+    .await;
 
     let leger = REST_CLIENT.get_ledger_information().await.unwrap();
-    let chain_id = leger.state().chain_id;
-    let block_height = leger.state().block_height;
-    //main wallet 0x7f3d4f0094a49421bdfca03366fa02add69d9091c76a4a0fe498caa163886fc0
+    // let chain_id = leger.state().chain_id;
+    // let block_height = leger.state().block_height;
+
     let private_keys = vec![
-        // "9f58ad87f70b70f14aa932dcf5ee9da94476eab7289bd4c186831d3eb66f1bb9",
+        "9f58ad87f70b70f14aa932dcf5ee9da94476eab7289bd4c186831d3eb66f1bb9",
         // "058b09a49baecb082ebc2f453d5d37e27a90de59c4ac336695320cd77069b7b9",
         // "58f4a06d8ddef801dd63bb720b206200c19b3f76e72b3769a54472cfc616d718",
         // "bd211942fe2007987901361136580dc8f381d96deccaf246476456dc14f9bff6",
@@ -73,21 +78,51 @@ async fn main() {
         // "6fa19a6434a3de8f5521d1954019e54dae11078dcfc7faf5387663d27371bf38",
         // "ba8256d3ce216f2d19153d59f2fd0061e5b3f26f18484262eeebd7cc9cec9356",
         //"832652b0a976b244fd4216e8237df12d0c21f5068d2c8782b3d5e9f895b871e2",
-// 0xb9c071d2232dc272d4f701df7c27d176b2b08817a158639ed14963a5d6e6c584 pri: 4863a88e17c8634398a1af839b0e9c6747e4927f45a0357f8af23469a16544d8
-// 0x5418ba472a4d2d2289eee0d02b0ed4aa7b33f76abd2f7da81d801ead327d8438 pri: 6645ae13335d49d3ea1579b13220f086e5fb9c193256006d1fd9e7695d2650dd
-// 0xad28df454b2c7913ff1bd6f17a1a0e1f183479b7188362d43aa6cf539c98d7b3 pri: 1e4be198625351a23e2297852e9a3f141f356ba3270de4825bea3262452afd96
-// 0xdf65e8fe98c1b55f5fe7268ca089a7c86cedf9f3d751cf9782d51bf22d7455c6 pri: 53bc08df805edbed9b294048c48389a0158141107d77795c75a07d03b23ed33a
-// 0x5deee1a23cedaab5e8467b57f83a57cbea28287e4053fd8b0d52b140e2750025 pri: 8a207743d1fad35fd356c81c130c1458850c62b63a30b0f8dda637c022c5818e
-// 0x9f8ee15e7a7db28527f21c572a082b555708539dff7fb28033f58ec40e75b18e pri: 10fd0ebb4cdd0a01f8c847d8479e5eb12dba1913de6c99ed30c0175b85a1e6fb
-// 0xbdc39dce68ab71ef6c3b739a6e948606fc16cfaa095a2f346f514b99b905fea2 pri: bc5d77906b885fc03e6c43c371ed9cf826b16352a3a653f5263ede57e15f6328
-// 0x31f70c464541427e9bb25d29d2d711b6a241a1a18873b0a63bd9dc5c55c21722 pri: 949ad7d764957d450021bd97ec96b25ac9ab5dae7db8db061bd5d2ce811c63fe
-// 0x1bb956658e6090fe4aa0ec6c91cfcf6ca05c61420318da17de13747d6779e4f0 pri: bda8d5e5027baf55be042e4163f1e1cd166fd8a3548531bad1c66e20f6e702ea                
-        
     ];
 
-    println!("Block Number: {} on chain_id: {}", block_height, chain_id);
-    let mut handles = vec![];
+    //println!("Block Number: {} on chain_id: {}", block_height, chain_id);
 
+    if let Some(data) = bm.mint_data.clone() {
+        println!("开始抢购BlueMoveNFT: {}",bm.nft_data.as_ref().unwrap().collection_name);
+
+        println!(
+            "(白)抢购开始时间-结束时间: {}",
+            utils::parse_timestamp_to_string(bm.get_start_time_wl().await.unwrap() as i64)
+        );
+        println!(
+            "(公售)开始抢购BlueMoveNFT: {}",
+            utils::parse_timestamp_to_string(bm.get_start_time().await.unwrap() as i64)
+        );
+
+        println!(
+            "限购(白): {} 限购: {}",
+            data.nft_per_user_wl, data.nft_per_user
+        );
+        
+        println!("总量(白): {} 总量: {}", data.total_nfts_wl, data.total_nfts);
+        
+        println!(
+            "售价(白): {} 售价: {}",
+            utils::parse_u64(&data.price_per_item_wl) / 1000000000,
+            utils::parse_u64(&data.price_per_item) / 1000000000
+        );
+    }
+
+    // wait to start......
+    loop {
+        if bm.get_start_time().await.unwrap() < get_current_unix() {
+            println!("公开销售开始-------------执行抢购...");
+            break;
+        }
+
+        if bm.get_start_time_wl().await.unwrap() < get_current_unix() {
+            println!("白名单销售开始-------------不执行抢购");
+        }
+
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
+
+    let mut handles = vec![];
     for private in private_keys {
         let b = bm.clone();
         handles.push(tokio::spawn(buy_with_account(b, private)));
@@ -97,8 +132,6 @@ async fn main() {
     for handle in handles {
         results.push(handle.await.unwrap());
     }
-
-    //buy_with_account(&bm, "75ff48929ee9ed15261bf1d31b2d4155dfd9c32a33b99a75d7a639c2a43a0f2f").await
 }
 
 async fn buy_with_account(bluenft: BlueMove, private_key: &'_ str) {
