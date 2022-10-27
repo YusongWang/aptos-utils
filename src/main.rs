@@ -1,14 +1,13 @@
+use anyhow::Result;
 use aptos_sdk::crypto::ed25519::Ed25519PrivateKey;
 use aptos_sdk::rest_client::Client;
 use aptos_sdk::types::{AccountKey, LocalAccount};
 use bluemove::BlueMove;
 use once_cell::sync::Lazy;
-use anyhow::Result;
 
 use std::fs::File;
 use std::io::{prelude::*, BufReader};
 use std::str::FromStr;
-use std::string;
 use std::time::Duration;
 
 use clap::Parser;
@@ -71,30 +70,29 @@ fn gen_account(number: u64) {
     }
 }
 
-fn get_account(number: u64) -> Result<(Vec<String>,Vec<String>)> {
+fn get_account(number: u64) -> Result<(Vec<String>, Vec<String>)> {
     let mut f = File::open("keys.txt")?;
     let br = BufReader::new(f);
     let mut addr = vec![];
     let mut pri = vec![];
-    
+
     let mut idx = 0;
-    
+
     for line in br.lines() {
         if idx >= number {
             break;
         }
-        
+
         if let Ok(l) = line {
-            let a:Vec<&str> = l.split('|').collect();
+            let a: Vec<&str> = l.split('|').collect();
             addr.push(a[0].to_string());
             pri.push(a[1].to_string());
         }
-        idx +=1;
+        idx += 1;
     }
 
-    Ok((addr,pri))
+    Ok((addr, pri))
 }
-
 
 #[tokio::main]
 async fn main() {
@@ -109,14 +107,12 @@ async fn main() {
         } else {
             println!("Node is down!!!");
         }
-        
-        let (accounts,private_keys) = get_account(args.count).unwrap();
-        
+
+        let (accounts, private_keys) = get_account(args.count).unwrap();
+
         let addr = args.address.unwrap();
         let mut bm = bluemove::BlueMove::new(&REST_CLIENT, addr, args.gas).await;
-        
         if let Some(data) = bm.mint_data.clone() {
-            
             println!(
                 "开始抢购BlueMoveNFT: {}",
                 bm.nft_data.as_ref().unwrap().collection_name
@@ -179,7 +175,7 @@ async fn main() {
     }
 }
 
-async fn buy_with_account(bluenft: BlueMove, private_key: &'_ str) {
+async fn buy_with_account(bluenft: BlueMove, private_key: String) {
     let addr = AccountKey::from_private_key(
         Ed25519PrivateKey::try_from(hex::decode(private_key).unwrap().as_slice()).unwrap(),
     );
@@ -203,7 +199,7 @@ async fn buy_with_account(bluenft: BlueMove, private_key: &'_ str) {
             / 100000000.00
     );
 
-    let item_number = 2;
+    let item_number = 1;
     if bluenft.buy_bluemove_mft(&mut alice, item_number).await {
         println!("Acct: {} Buy success for {}", account, item_number);
     } else {
