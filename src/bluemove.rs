@@ -204,13 +204,13 @@ impl BlueMove {
     pub async fn get_start_time(&mut self) -> Option<u64> {
         self.mint_data
             .as_ref()
-            .map(|mint_data| mint_data.start_time.parse::<u64>().unwrap() / 1000)
+            .map(|mint_data| mint_data.start_time.parse::<u64>().unwrap() / 1000 - 3)
     }
 
     pub async fn get_start_time_wl(&mut self) -> Option<u64> {
         self.mint_data
             .as_ref()
-            .map(|mint_data| mint_data.start_time_wl.parse::<u64>().unwrap() / 1000)
+            .map(|mint_data| mint_data.start_time_wl.parse::<u64>().unwrap() / 1000 - 3)
     }
 
     pub async fn get_end_time(&mut self) -> Option<u64> {

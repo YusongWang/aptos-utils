@@ -1,6 +1,12 @@
-use anyhow::Result;
+use aptos_sdk::bcs;
+use aptos_sdk::move_types::account_address::AccountAddress;
 use aptos_sdk::crypto::ed25519::Ed25519PrivateKey;
+use aptos_sdk::move_types::identifier::Identifier;
+use aptos_sdk::move_types::language_storage::ModuleId;
 use aptos_sdk::rest_client::Client;
+use aptos_sdk::transaction_builder::TransactionBuilder;
+use aptos_sdk::types::chain_id::ChainId;
+use aptos_sdk::types::transaction::*;
 use aptos_sdk::types::{AccountKey, LocalAccount};
 use bluemove::BlueMove;
 use once_cell::sync::Lazy;
@@ -8,8 +14,9 @@ use once_cell::sync::Lazy;
 use std::fs::File;
 use std::io::{prelude::*, BufReader};
 use std::str::FromStr;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use anyhow::Result;
 use clap::Parser;
 use url::Url;
 
@@ -29,13 +36,6 @@ static REST_CLIENT: Lazy<Client> = Lazy::new(|| {
     Client::new(url)
 });
 
-static DB: Lazy<String> = Lazy::new(|| {
-    std::env::var("DB")
-        .as_ref()
-        .map(|s| s.clone().to_string())
-        .unwrap_or("keys.db".to_string())
-});
-
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -50,6 +50,10 @@ struct Args {
     /// The Accounts You want use
     #[arg(short, long, default_value_t = 100)]
     pub count: u64,
+
+    /// The Accounts You want use
+    #[arg(long)]
+    pub amount: Option<u64>,
 
     /// Gas price
     #[arg(short, long, default_value_t = 100)]
@@ -71,7 +75,7 @@ fn gen_account(number: u64) {
 }
 
 fn get_account(number: u64) -> Result<(Vec<String>, Vec<String>)> {
-    let mut f = File::open("keys.txt")?;
+    let f = File::open("keys.txt")?;
     let br = BufReader::new(f);
     let mut addr = vec![];
     let mut pri = vec![];
@@ -94,11 +98,66 @@ fn get_account(number: u64) -> Result<(Vec<String>, Vec<String>)> {
     Ok((addr, pri))
 }
 
+async fn transfer(count: u64, amount: u64) {
+    let (accounts, _) = get_account(count).unwrap();
+
+    let mut addresses = vec![];
+
+    let mut amounts =vec![];
+    for account in accounts.into_iter() {
+        addresses.push(AccountAddress::from_hex_literal(&account).unwrap());
+        amounts.push(amount);
+    }
+
+    let private_key = std::env::var("PRIVATE_KEY")
+        .as_ref()
+        .map(|s| s.clone().to_string())
+        .unwrap();
+
+    println!("{}", private_key);
+    let addr = AccountKey::from_private_key(
+        Ed25519PrivateKey::try_from(hex::decode(private_key).unwrap().as_slice()).unwrap(),
+    );
+
+    let account = addr.authentication_key().derived_address();
+    let acct = REST_CLIENT.get_account(account).await.unwrap();
+    let mut sender = LocalAccount::new(account, addr, acct.into_inner().sequence_number);
+
+    let transaction_builder = TransactionBuilder::new(
+        TransactionPayload::EntryFunction(EntryFunction::new(
+            ModuleId::new(sender.address(), Identifier::new("Transfer").unwrap()),
+            Identifier::new("batch").unwrap(),
+            vec![],
+            vec![
+                bcs::to_bytes(&addresses).unwrap(),
+                bcs::to_bytes(&amounts).unwrap(),
+            ],
+        )),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            + 100,
+        ChainId::new(4),
+    )
+    .sender(sender.address())
+    .sequence_number(sender.sequence_number())
+    .max_gas_amount(100000)
+    .gas_unit_price(100);
+
+    let signed_txn = sender.sign_with_transaction_builder(transaction_builder);
+    let pending = REST_CLIENT.submit(&signed_txn).await.unwrap().into_inner();
+    println!("submit at: 0x{}", pending.hash);
+    let wait = REST_CLIENT.wait_for_transaction(&pending).await.unwrap();
+
+    println!("success: {}", wait.into_inner().success());
+}
+
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
-    if args.action == "hello" {
-        println!("hello");
+    if args.action == "transfer" {
+        transfer(args.count, args.amount.unwrap()).await;
     } else if args.action == "accounts" {
         gen_account(args.count);
     } else if args.action == "buy" {
@@ -108,7 +167,7 @@ async fn main() {
             println!("Node is down!!!");
         }
 
-        let (accounts, private_keys) = get_account(args.count).unwrap();
+        let (_, private_keys) = get_account(args.count).unwrap();
 
         let addr = args.address.unwrap();
         let mut bm = bluemove::BlueMove::new(&REST_CLIENT, addr, args.gas).await;
