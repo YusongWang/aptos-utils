@@ -256,3 +256,108 @@ impl BlueMove {
         wait.into_inner().success()
     }
 }
+
+
+async fn buy_nft(client:&Client,contract:String,gas_price:u64) {
+        if let Ok(()) = client.health_check(100).await {
+            //println!("Health status: Ok",);
+        } else {
+            println!("Node is down!!!");
+        }
+
+        let (_, private_keys) = get_account(args.count).unwrap();
+
+        let addr = contract;
+        let mut bm = bluemove::BlueMove::new(&REST_CLIENT, addr, args.gas).await;
+        if let Some(data) = bm.mint_data.clone() {
+            println!(
+                "开始抢购BlueMoveNFT: {}",
+                bm.nft_data.as_ref().unwrap().collection_name
+            );
+            println!("白名单数量: {}", data.members.len());
+
+            println!(
+                "(白名单)抢购 开始时间-结束时间: {} --- {}",
+                utils::parse_timestamp_to_string(bm.get_start_time_wl().await.unwrap() as i64),
+                utils::parse_timestamp_to_string(bm.get_end_time_wl().await.unwrap() as i64)
+            );
+
+            println!(
+                "公开销售 开始时间-结束时间: {} --- {}",
+                utils::parse_timestamp_to_string(bm.get_start_time().await.unwrap() as i64),
+                utils::parse_timestamp_to_string(bm.get_end_time().await.unwrap() as i64)
+            );
+
+            println!(
+                "限购(白): {} 限购: {}",
+                data.nft_per_user_wl, data.nft_per_user
+            );
+
+            println!("总量(白): {} 总量: {}", data.total_nfts_wl, data.total_nfts);
+
+            println!(
+                "售价(白): {}APT 售价: {}APT",
+                utils::parse_u64(&data.price_per_item_wl) as f64 / 100000000.00,
+                utils::parse_u64(&data.price_per_item) as f64 / 100000000.00,
+            );
+        }
+
+        // wait to start......
+        loop {
+            if bm.get_start_time().await.unwrap() < get_current_unix() {
+                println!("公开销售开始-------------执行抢购...");
+                break;
+            }
+
+            if bm.get_start_time_wl().await.unwrap() < get_current_unix() {
+                println!("白名单销售开始-------------不执行抢购");
+            }
+
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+
+        let mut handles = vec![];
+        for private in private_keys {
+            let b = bm.clone();
+            handles.push(tokio::spawn(buy_with_account(b, private)));
+        }
+
+        for handle in handles {
+            if let Err(e) = handle.await {
+                println!("{}", e);
+            }
+        }
+}
+
+async fn buy_with_account(bluenft: BlueMove, private_key: String) {
+    let addr = AccountKey::from_private_key(
+        Ed25519PrivateKey::try_from(hex::decode(private_key).unwrap().as_slice()).unwrap(),
+    );
+
+    let account = addr.authentication_key().derived_address();
+
+    let acct = REST_CLIENT.get_account(account).await.unwrap();
+    let mut alice = LocalAccount::new(account, addr, acct.into_inner().sequence_number);
+
+    println!(
+        "Addcount: 0x{} \nBalance: {}",
+        account,
+        *REST_CLIENT
+            .get_account_balance(alice.address())
+            .await
+            .unwrap()
+            .into_inner()
+            .coin
+            .value
+            .inner() as f64
+            / 100000000.00
+    );
+
+    let item_number = 1;
+    if bluenft.buy_bluemove_mft(&mut alice, item_number).await {
+        println!("Acct: {} Buy success for {}", account, item_number);
+    } else {
+        println!("Buy Nft Faild...");
+    }
+}
+
