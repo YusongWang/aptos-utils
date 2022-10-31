@@ -6,8 +6,8 @@ mod account;
 mod aptos;
 mod bluemove;
 mod cli;
-mod utils;
 mod log;
+mod utils;
 
 use cli::Cli;
 use log::initialize_logger;
@@ -15,7 +15,7 @@ use log::initialize_logger;
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenv().ok();
-    initialize_logger(0,"aptos.log","./");
-    
+    initialize_logger(0, "aptos.log", "./");
+
     Cli::parse().run().await
 }

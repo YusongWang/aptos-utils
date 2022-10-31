@@ -1,4 +1,4 @@
-use chrono::{FixedOffset, NaiveDateTime};
+use chrono::NaiveDateTime;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn parse_timestamp_to_string(timestamp: i64) -> String {

@@ -17,10 +17,9 @@ use std::time::UNIX_EPOCH;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::account::get_account;
 use crate::utils::*;
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NftMeta {
     #[serde(rename = "base_token_name")]
@@ -33,19 +32,19 @@ pub struct NftMeta {
     pub token_description: String,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Token {
     pub cap: Cap,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Cap {
     pub account: String,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MintData {
     #[serde(rename = "current_token")]
@@ -81,20 +80,20 @@ pub struct MintData {
     pub total_nfts_wl: String,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MintingEvent {
     pub counter: String,
     pub guid: Guid,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Guid {
     pub id: Id,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Id {
     pub addr: String,
@@ -102,20 +101,20 @@ pub struct Id {
     pub creation_num: String,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MintingEventWl {
     pub counter: String,
     pub guid: Guid2,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Guid2 {
     pub id: Id2,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Id2 {
     pub addr: String,
@@ -135,13 +134,18 @@ pub struct BlueMove {
 }
 
 impl BlueMove {
-    pub async fn new(client: Client, contract_address: String, gas_price: u64) -> Self {
+    pub async fn new(
+        client: Client,
+        contract_address: String,
+        gas_price: u64,
+        gas_limit: u64,
+    ) -> Self {
         let mut blue = BlueMove {
             client,
             contract_address,
             token_address: "".to_string(),
             gas_price,
-            gas_limit: 150000, //147116
+            gas_limit,
             mint_data: None,
             nft_data: None,
         };
@@ -329,10 +333,16 @@ impl BlueMove {
     }
 }
 
-pub async fn buy_nft(client: Client, contract: String, gas_price: u64, private_keys: Vec<String>) {
+pub async fn buy_nft(
+    client: Client,
+    contract: String,
+    gas_limit: u64,
+    gas_price: u64,
+    private_keys: Vec<String>,
+) {
     let addr = contract;
 
-    let mut bm = BlueMove::new(client, addr, gas_price).await;
+    let mut bm = BlueMove::new(client, addr, gas_limit, gas_price).await;
     bm.print_meta().await;
 
     // wait to start......
