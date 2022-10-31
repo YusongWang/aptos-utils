@@ -1,5 +1,8 @@
 use anyhow::Result;
+use clap::Command;
 use clap::{Parser, Subcommand};
+
+use crate::bluemove::buy_nft;
 
 use super::account::*;
 use super::aptos::*;
@@ -38,7 +41,10 @@ impl Cli {
         }
 
         let client = get_client()?;
-
+        if let Err(e) = client.health_check(100).await {
+            println!("Node is down!!! {}", e);
+        }
+        
         match self.command.as_ref().unwrap() {
             Commands::Gen { count } => gen_account(count)?,
             Commands::Split {
@@ -52,7 +58,10 @@ impl Cli {
                 count,
                 gas_limit,
                 gas_price,
-            } => {}
+            } => {
+                let (_, private_keys) = get_account(*count)?;
+                buy_nft(client, contract.to_string(), *gas_price, private_keys).await
+            }
         }
 
         Ok(())

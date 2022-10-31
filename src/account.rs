@@ -29,7 +29,7 @@ pub fn gen_account(number: &u64) -> Result<()> {
     Ok(())
 }
 
-fn get_account(number: u64) -> Result<(Vec<String>, Vec<String>)> {
+pub fn get_account(number: u64) -> Result<(Vec<String>, Vec<String>)> {
     let f = File::open("keys.txt")?;
     let br = BufReader::new(f);
     let mut addr = vec![];
