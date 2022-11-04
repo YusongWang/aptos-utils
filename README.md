@@ -15,7 +15,10 @@ a bot for buy nft on bluemove
 Only ubuntu ^20.04 from released
 
 # how to use ?
+
 ## 1. isntall
+
+
 first all , you need install Rust cargo.
 quick do that, you can use aptos-core setup.
 
@@ -25,7 +28,10 @@ follow
 
 
 ## 2. help
-### generate accounts 
+
+
+
+### 2.1 generate accounts 
 
 use command.
 
@@ -58,7 +64,7 @@ aptos move pushlic
 ```
 you well success publish you first contract to mainnet..
 
-### batch transfer use aptos-utils
+### 2.2 batch transfer use aptos-utils
 
 So you doing good. let's use commond trasfer a amount
 
@@ -77,6 +83,6 @@ gas price just lavel 100.
 
 if success you well see nothing.
 
-### batch buy.
+### 2.3 batch buy.
 
 TODO
