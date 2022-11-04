@@ -1,3 +1,7 @@
+use futures::future::join_all;
+use serde::{Deserialize, Serialize};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
 use aptos_sdk::bcs;
 use aptos_sdk::crypto::ed25519::Ed25519PrivateKey;
 use aptos_sdk::move_types::account_address::AccountAddress;
@@ -9,13 +13,6 @@ use aptos_sdk::types::chain_id::ChainId;
 use aptos_sdk::types::transaction::*;
 use aptos_sdk::types::AccountKey;
 use aptos_sdk::types::LocalAccount;
-
-use std::time::Duration;
-use std::time::SystemTime;
-use std::time::UNIX_EPOCH;
-
-use serde::Deserialize;
-use serde::Serialize;
 
 use crate::utils::*;
 
@@ -284,7 +281,7 @@ impl BlueMove {
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_secs()
-                + 300,
+                + 100,
             ChainId::new(1),
         )
         .sender(account.address())
@@ -294,9 +291,8 @@ impl BlueMove {
 
         let signed_txn = account.sign_with_transaction_builder(transaction_builder);
         let pending = self.client.submit(&signed_txn).await.unwrap().into_inner();
-        let wait = self.client.wait_for_transaction(&pending).await.unwrap();
-
         println!("submit at: 0x{}", pending.hash);
+        let wait = self.client.wait_for_transaction(&pending).await.unwrap();
         wait.into_inner().success()
     }
 
@@ -367,9 +363,5 @@ pub async fn buy_nft(
         ));
     }
 
-    for handle in handles {
-        if let Err(e) = handle.await {
-            println!("{}", e);
-        }
-    }
+    let _ = join_all(handles).await;
 }

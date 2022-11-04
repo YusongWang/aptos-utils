@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 use crate::bluemove::buy_nft;
+use crate::log::initialize_logger;
 
 use super::account::*;
 use super::aptos::*;
@@ -12,6 +13,9 @@ use super::aptos::*;
 pub struct Cli {
     #[clap(subcommand)]
     command: Option<Commands>,
+
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    verbose: u8,
 }
 
 #[derive(Subcommand)]
@@ -36,8 +40,13 @@ enum Commands {
 impl Cli {
     pub async fn run(&self) -> Result<()> {
         if self.command.is_none() {
+            use clap::CommandFactory;
+            let mut cmd = Cli::command();
+            cmd.print_help()?;
             return Ok(());
         }
+
+        initialize_logger(self.verbose, "aptos.log", "./");
 
         let client = get_client()?;
         if let Err(e) = client.health_check(100).await {

@@ -1,6 +1,5 @@
-use std::io;
-
 use crossterm::tty::IsTty;
+use std::io;
 use tracing_subscriber::{
     fmt::{format::Writer, time::FormatTime},
     EnvFilter,
@@ -11,7 +10,7 @@ pub fn initialize_logger(verbosity: u8, filename: &str, filepath: &str) {
         0 => std::env::set_var("RUST_LOG", "info"),
         1 => std::env::set_var("RUST_LOG", "debug"),
         2 | 3 => std::env::set_var("RUST_LOG", "trace"),
-        _ => std::env::set_var("RUST_LOG", "info"),
+        _ => std::env::set_var("RUST_LOG", "trace"),
     };
 
     struct LocalTimer;
