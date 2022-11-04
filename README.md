@@ -16,20 +16,14 @@ Only ubuntu ^20.04 from released
 
 # how to use ?
 
-## 1. isntall
-
+## 1. install
 
 first all , you need install Rust cargo.
 quick do that, you can use aptos-core setup.
 
-follow
+follow [build-aptos-cli](https://aptos.dev/cli-tools/build-aptos-cli#linux)
 
-[build-aptos-cli](https://aptos.dev/cli-tools/build-aptos-cli#linux)
-
-
-## 2. help
-
-
+## 2. use 
 
 ### 2.1 generate accounts 
 
