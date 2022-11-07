@@ -46,35 +46,63 @@ pub struct Cap {
 pub struct MintData {
     #[serde(rename = "current_token")]
     pub current_token: String,
+    #[serde(rename = "current_token_og")]
+    pub current_token_og: String,
     #[serde(rename = "current_token_wl")]
     pub current_token_wl: String,
     #[serde(rename = "expired_time")]
     pub expired_time: String,
+    #[serde(rename = "expired_time_og")]
+    pub expired_time_og: String,
     #[serde(rename = "expired_time_wl")]
     pub expired_time_wl: String,
     #[serde(rename = "lauchpad_fee")]
     pub lauchpad_fee: String,
-    pub members: Vec<String>,
+    pub members: Members,
+    #[serde(rename = "members_og")]
+    pub members_og: MembersOg,
     #[serde(rename = "minting_event")]
     pub minting_event: MintingEvent,
+    #[serde(rename = "minting_event_og")]
+    pub minting_event_og: MintingEventOg,
     #[serde(rename = "minting_event_wl")]
     pub minting_event_wl: MintingEventWl,
     #[serde(rename = "nft_per_user")]
     pub nft_per_user: String,
+    #[serde(rename = "nft_per_user_og")]
+    pub nft_per_user_og: String,
     #[serde(rename = "nft_per_user_wl")]
     pub nft_per_user_wl: String,
     #[serde(rename = "price_per_item")]
     pub price_per_item: String,
+    #[serde(rename = "price_per_item_og")]
+    pub price_per_item_og: String,
     #[serde(rename = "price_per_item_wl")]
     pub price_per_item_wl: String,
     #[serde(rename = "start_time")]
     pub start_time: String,
+    #[serde(rename = "start_time_og")]
+    pub start_time_og: String,
     #[serde(rename = "start_time_wl")]
     pub start_time_wl: String,
     #[serde(rename = "total_nfts")]
     pub total_nfts: String,
+    #[serde(rename = "total_nfts_og")]
+    pub total_nfts_og: String,
     #[serde(rename = "total_nfts_wl")]
     pub total_nfts_wl: String,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Members {
+    pub handle: String,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MembersOg {
+    pub handle: String,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -100,7 +128,7 @@ pub struct Id {
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct MintingEventWl {
+pub struct MintingEventOg {
     pub counter: String,
     pub guid: Guid2,
 }
@@ -114,6 +142,27 @@ pub struct Guid2 {
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Id2 {
+    pub addr: String,
+    #[serde(rename = "creation_num")]
+    pub creation_num: String,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MintingEventWl {
+    pub counter: String,
+    pub guid: Guid3,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Guid3 {
+    pub id: Id3,
+}
+
+#[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Id3 {
     pub addr: String,
     #[serde(rename = "creation_num")]
     pub creation_num: String,
@@ -192,6 +241,11 @@ impl BlueMove {
     }
 
     pub async fn reflash_mint_data(&mut self) -> Option<MintData> {
+        println!(
+            "{}",
+            format!("{}::factory::MintData", self.contract_address).as_str()
+        );
+
         match self
             .client
             .get_account_resource(
@@ -225,7 +279,8 @@ impl BlueMove {
                 "开始抢购BlueMoveNFT: {}",
                 self.nft_data.as_ref().unwrap().collection_name
             );
-            println!("白名单数量: {}", data.members.len());
+
+            //println!("白名单数量: {}", data.members.len());
 
             println!(
                 "(白名单)抢购 开始时间-结束时间: {} --- {}",
