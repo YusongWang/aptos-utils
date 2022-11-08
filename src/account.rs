@@ -54,6 +54,7 @@ pub async fn transfer(
     rest_client: &Client,
     count: &u64,
     amount: &u64,
+    chain_id: &u8,
     gas_limit: &u64,
     gas_price: &u64,
 ) -> Result<()> {
@@ -88,7 +89,7 @@ pub async fn transfer(
             .unwrap()
             .as_secs()
             + 100,
-        ChainId::new(1),
+        ChainId::new(*chain_id),
     )
     .sender(sender.address())
     .sequence_number(sender.sequence_number())

@@ -175,6 +175,7 @@ pub struct BlueMove {
     pub token_address: String,
     pub mint_data: Option<MintData>,
     pub nft_data: Option<NftMeta>,
+    pub chain_id: u8,
     pub gas_price: u64,
     pub gas_limit: u64,
 }
@@ -183,13 +184,15 @@ impl BlueMove {
     pub async fn new(
         client: Client,
         contract_address: String,
-        gas_price: u64,
+        chain_id: u8,
         gas_limit: u64,
+        gas_price: u64,
     ) -> Self {
         let mut blue = BlueMove {
             client,
             contract_address,
             token_address: "".to_string(),
+            chain_id,
             gas_price,
             gas_limit,
             mint_data: None,
@@ -241,11 +244,6 @@ impl BlueMove {
     }
 
     pub async fn reflash_mint_data(&mut self) -> Option<MintData> {
-        println!(
-            "{}",
-            format!("{}::factory::MintData", self.contract_address).as_str()
-        );
-
         match self
             .client
             .get_account_resource(
@@ -337,7 +335,7 @@ impl BlueMove {
                 .unwrap()
                 .as_secs()
                 + 100,
-            ChainId::new(1),
+            ChainId::new(self.chain_id),
         )
         .sender(account.address())
         .sequence_number(account.sequence_number())
@@ -351,7 +349,7 @@ impl BlueMove {
         wait.into_inner().success()
     }
 
-    pub async fn buy_with_account(&self, private_key: String) {
+    pub async fn buy_with_account(&self, private_key: String, items_number: u64) {
         let addr = AccountKey::from_private_key(
             Ed25519PrivateKey::try_from(hex::decode(private_key).unwrap().as_slice()).unwrap(),
         );
@@ -375,9 +373,8 @@ impl BlueMove {
                 / 100000000.00
         );
 
-        let item_number = 1;
-        if self.buy_bluemove_mft(&mut alice, item_number).await {
-            println!("Acct: {} Buy success for {}", account, item_number);
+        if self.buy_bluemove_mft(&mut alice, items_number).await {
+            println!("Acct: {} Buy success for {}", account, items_number);
         } else {
             println!("Buy Nft Faild...");
         }
@@ -387,13 +384,15 @@ impl BlueMove {
 pub async fn buy_nft(
     client: Client,
     contract: String,
+    chain_id: u8,
     gas_limit: u64,
     gas_price: u64,
+    number: u64,
     private_keys: Vec<String>,
 ) {
     let addr = contract;
 
-    let mut bm = BlueMove::new(client, addr, gas_limit, gas_price).await;
+    let mut bm = BlueMove::new(client, addr, chain_id, gas_limit, gas_price).await;
     bm.print_meta().await;
 
     // wait to start......
@@ -413,9 +412,9 @@ pub async fn buy_nft(
     let mut handles = vec![];
     for private in private_keys {
         let b = bm.clone();
-        handles.push(tokio::spawn(
-            async move { b.buy_with_account(private).await },
-        ));
+        handles.push(tokio::spawn(async move {
+            b.buy_with_account(private, number).await
+        }));
     }
 
     let _ = join_all(handles).await;

@@ -34,6 +34,7 @@ enum Commands {
         count: u64,
         gas_limit: u64,
         gas_price: u64,
+        number: u64,
     },
 }
 
@@ -50,8 +51,13 @@ impl Cli {
 
         let client = get_client()?;
         if let Err(e) = client.health_check(100).await {
-            println!("Node is down!!! {}", e);
+            panic!("Node is down!!! {}", e);
         }
+
+        //let chain_id = client.chan
+        //client.simulate_bcs_with_gas_estimation(txn, estimate_max_gas_amount, estimate_max_gas_unit_price)
+        let version = client.get_aptos_version().await?;
+        let chain_id = version.state().chain_id;
 
         match self.command.as_ref().unwrap() {
             Commands::Gen { count } => gen_account(count)?,
@@ -60,19 +66,22 @@ impl Cli {
                 amount,
                 gas_limit,
                 gas_price,
-            } => transfer(&client, count, amount, gas_limit, gas_price).await?,
+            } => transfer(&client, count, amount, &chain_id, gas_limit, gas_price).await?,
             Commands::Buy {
                 contract,
                 count,
                 gas_limit,
                 gas_price,
+                number,
             } => {
                 let (_, private_keys) = get_account(*count)?;
                 buy_nft(
                     client,
                     contract.to_string(),
+                    chain_id,
                     *gas_limit,
                     *gas_price,
+                    *number,
                     private_keys,
                 )
                 .await

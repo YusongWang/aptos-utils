@@ -8,7 +8,7 @@ pub fn get_client() -> Result<Client> {
         std::env::var("APTOS_API")
             .as_ref()
             .map(|s| s.as_str())
-            .unwrap_or("https://aptos-mainnet.nodereal.io/v1/0749b9335a1f4b098ed23d154f6c905e/v1"),
+            .unwrap_or("https://fullnode.mainnet.aptoslabs.com/v1"),
     )?;
 
     Ok(Client::new(url))

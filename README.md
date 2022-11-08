@@ -39,7 +39,7 @@ Well generate 100 keypair in execution dir. call keys.txt you can view that acco
 
 first do that. you need publish a contract to you main wallet.
 
-source code at (this)[https://github.com/YusongWang/aptos-utils/tree/main/batch-trasfer-move]
+source code at [this](https://github.com/YusongWang/aptos-utils/tree/main/batch-trasfer-move)
 
 to use this. you need init you aptos account. with aptos cli
 
