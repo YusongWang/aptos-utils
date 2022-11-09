@@ -1,5 +1,8 @@
-# Aptos-utils
-a bot for buy nft on bluemove
+BlueMove Mint bot, only contract call. fast and safety..
+
+PR is open, wellcome to PR new feture, Thank you.
+
+
 
 # Future
 - batch generate account.

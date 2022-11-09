@@ -51,11 +51,9 @@ impl Cli {
 
         let client = get_client()?;
         if let Err(e) = client.health_check(100).await {
-            panic!("Node is down!!! {}", e);
+            panic!("Node is down:{}", e);
         }
 
-        //let chain_id = client.chan
-        //client.simulate_bcs_with_gas_estimation(txn, estimate_max_gas_amount, estimate_max_gas_unit_price)
         let version = client.get_aptos_version().await?;
         let chain_id = version.state().chain_id;
 
