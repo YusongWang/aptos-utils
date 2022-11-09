@@ -3,15 +3,16 @@ BlueMove Mint bot, only contract call. fast and safety..
 PR is open, wellcome to PR new feture, Thank you.
 
 
-
 # Future
 - batch generate account.
 - transfer with contract. no need use wallet,batch 100 account in one tx.
 - Wait mint started and auto mint for may account.
 
 # TODO
-- transfer nft to owner account .
-- Or list nft on bluemove.
+- batch transfer balance to owner
+- batch transfer nft to owner account .
+- batch Or list nft on bluemove.
+
 
 # System require.
 
@@ -52,12 +53,12 @@ aptos init
 
 and select mainnet, and push you main wallet privateKey.
 
-Then change Move.Toml selation addresses.owner = "you main address start with 0x"
+Then change Move.toml selation addresses.owner = "you main address start with 0x"
 
 and In the same dir. run commond.
 
 ```shell
-aptos move pushlic
+aptos move publish
 ```
 you well success publish you first contract to mainnet..
 
