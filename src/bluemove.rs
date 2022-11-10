@@ -1,6 +1,7 @@
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tracing::info;
 
 use aptos_sdk::bcs;
 use aptos_sdk::crypto::ed25519::Ed25519PrivateKey;
@@ -273,34 +274,35 @@ impl BlueMove {
 
     pub async fn print_meta(&mut self) {
         if let Some(data) = self.mint_data.clone() {
-            println!(
-                "开始抢购BlueMoveNFT: {}",
+            info!(
+                "Mint NFT on BLueMove: {}",
                 self.nft_data.as_ref().unwrap().collection_name
             );
 
-            //println!("白名单数量: {}", data.members.len());
-
-            println!(
-                "(白名单)抢购 开始时间-结束时间: {} --- {}",
+            info!(
+                "(wl)mint start-end: {} --- {}",
                 parse_timestamp_to_string(self.get_start_time_wl().await.unwrap() as i64),
                 parse_timestamp_to_string(self.get_end_time_wl().await.unwrap() as i64)
             );
 
-            println!(
-                "公开销售 开始时间-结束时间: {} --- {}",
+            info!(
+                "public mint start-end: {} --- {}",
                 parse_timestamp_to_string(self.get_start_time().await.unwrap() as i64),
                 parse_timestamp_to_string(self.get_end_time().await.unwrap() as i64)
             );
 
-            println!(
-                "限购(白): {} 限购: {}",
+            info!(
+                "per/wallet(白): {} per/wallet: {}",
                 data.nft_per_user_wl, data.nft_per_user
             );
 
-            println!("总量(白): {} 总量: {}", data.total_nfts_wl, data.total_nfts);
+            info!(
+                "total(wl): {} total_nft: {}",
+                data.total_nfts_wl, data.total_nfts
+            );
 
-            println!(
-                "售价(白): {}APT 售价: {}APT",
+            info!(
+                "sale(wl): {}APT sale: {}APT",
                 parse_u64(&data.price_per_item_wl) as f64 / 100000000.00,
                 parse_u64(&data.price_per_item) as f64 / 100000000.00,
             );
@@ -344,7 +346,7 @@ impl BlueMove {
 
         let signed_txn = account.sign_with_transaction_builder(transaction_builder);
         let pending = self.client.submit(&signed_txn).await.unwrap().into_inner();
-        println!("submit at: 0x{}", pending.hash);
+        info!("submit at: 0x{}", pending.hash);
         let wait = self.client.wait_for_transaction(&pending).await.unwrap();
         wait.into_inner().success()
     }
@@ -374,9 +376,9 @@ impl BlueMove {
         );
 
         if self.buy_bluemove_mft(&mut alice, items_number).await {
-            println!("Acct: {} Buy success for {}", account, items_number);
+            info!("Acct: {} Buy success for {}", account, items_number);
         } else {
-            println!("Buy Nft Faild...");
+            info!("Buy Nft Faild...");
         }
     }
 }
@@ -398,13 +400,14 @@ pub async fn buy_nft(
     // wait to start......
     loop {
         if bm.get_start_time().await.unwrap() < get_current_unix() {
-            println!("公开销售开始-------------执行抢购...");
+            info!("public mint start ------------- let's get start");
             break;
         }
 
-        if bm.get_start_time_wl().await.unwrap() < get_current_unix() {
-            println!("白名单销售开始-------------不执行抢购");
-        }
+        // TODO change for wl og mint
+        // if bm.get_start_time_wl().await.unwrap() < get_current_unix() {
+        //     println!("白名单销售开始-------------不执行抢购");
+        // }
 
         tokio::time::sleep(Duration::from_secs(1)).await;
     }

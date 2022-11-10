@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::{prelude::*, BufReader};
 use std::time::{SystemTime, UNIX_EPOCH};
+use tracing::info;
 
 use anyhow::{anyhow, Context, Result};
 use aptos_sdk::bcs;
@@ -98,7 +99,7 @@ pub async fn transfer(
 
     let signed_txn = sender.sign_with_transaction_builder(transaction_builder);
     let pending = rest_client.submit(&signed_txn).await?.into_inner();
-    println!("submit at: {}", pending.hash);
+    info!("submit at: {}", pending.hash);
     let wait = rest_client.wait_for_transaction(&pending).await.unwrap();
 
     if wait.into_inner().success() {

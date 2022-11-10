@@ -73,7 +73,7 @@ impl Souffl {
         let pending = self.client.submit(&signed_txn).await.unwrap().into_inner();
         let wait = self.client.wait_for_transaction(&pending).await.unwrap();
 
-        println!("submit at: 0x{}", pending.hash);
+        info!("submit at: 0x{}", pending.hash);
         wait.into_inner().success()
     }
 }
