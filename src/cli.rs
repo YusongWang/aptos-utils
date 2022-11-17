@@ -3,6 +3,7 @@ use clap::{Parser, Subcommand};
 
 use crate::bluemove::buy_nft;
 use crate::log::initialize_logger;
+use crate::souffl3::Souffl;
 
 use super::account::*;
 use super::aptos::*;
@@ -72,17 +73,20 @@ impl Cli {
                 gas_price,
                 number,
             } => {
+
                 let (_, private_keys) = get_account(*count)?;
-                buy_nft(
-                    client,
-                    contract.to_string(),
-                    chain_id,
-                    *gas_limit,
-                    *gas_price,
-                    *number,
-                    private_keys,
-                )
-                .await
+                let sou = Souffl::new(client,private_keys[0].clone(),*gas_price,*gas_limit).await;
+                sou.buy_with_account(private_keys[0].clone(), 1).await
+                // buy_nft(
+                //     client,
+                //     contract.to_string(),
+                //     chain_id,
+                //     *gas_limit,
+                //     *gas_price,
+                //     *number,
+                //     private_keys,
+                // )
+                // .await
             }
         }
 

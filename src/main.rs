@@ -7,6 +7,7 @@ mod aptos;
 mod bluemove;
 mod cli;
 mod log;
+mod souffl3;
 mod utils;
 
 use cli::Cli;
