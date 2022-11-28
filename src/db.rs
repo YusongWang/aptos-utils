@@ -65,7 +65,7 @@ impl Db {
         for _ in 0..*number {
             let acc = LocalAccount::generate(&mut rand::rngs::OsRng);
             let k = Key {
-                address: acc.address().to_string(),
+                address: format!("0x{}", acc.address().to_string()),
                 private: hex::encode(acc.private_key().to_bytes()),
                 mnemonic: "".to_string(),
                 balance: "0".to_string(),
@@ -105,8 +105,7 @@ impl Db {
 
     // update seq number
     pub fn update(&self, id: u64, seq: u64) -> Result<()> {
-        let l = self
-            .conn
+        self.conn
             .execute("UPDATE keys set seq = ?1 where id = ?2", (seq, id))?;
 
         Ok(())

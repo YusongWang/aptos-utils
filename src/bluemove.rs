@@ -293,7 +293,7 @@ impl BlueMove {
             );
 
             info!(
-                "per/wallet(白): {} per/wallet: {}",
+                "per/wallet(WL): {} per/wallet: {}",
                 data.nft_per_user_wl, data.nft_per_user
             );
 
@@ -337,7 +337,7 @@ impl BlueMove {
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_secs()
-                + 100,
+                + 1000,
             ChainId::new(self.chain_id),
         )
         .sender(account.address())
@@ -346,10 +346,23 @@ impl BlueMove {
         .gas_unit_price(self.gas_price);
 
         let signed_txn = account.sign_with_transaction_builder(transaction_builder);
-        let pending = self.client.submit(&signed_txn).await.unwrap().into_inner();
-        info!("submit at: 0x{}", pending.hash);
-        let wait = self.client.wait_for_transaction(&pending).await.unwrap();
-        wait.into_inner().success()
+
+        let res = self
+            .client
+            .simulate_bcs_with_gas_estimation(&signed_txn, true, true)
+            .await
+            .unwrap();
+        if *res.inner().info.status() != ExecutionStatus::Success {
+            info!("faild.");
+
+            dbg!(&res.inner().info);
+        }
+
+        true
+        // let pending = self.client.submit(&signed_txn).await.unwrap().into_inner();
+        // info!("submit at: 0x{}", pending.hash);
+        // let wait = self.client.wait_for_transaction(&pending).await.unwrap();
+        // wait.into_inner().success()
     }
 
     pub async fn buy_with_account(&self, private_key: String, seq: u64, items_number: u64) {
@@ -398,19 +411,19 @@ pub async fn buy_nft(
     let mut bm = BlueMove::new(client, addr, chain_id, gas_limit, gas_price).await;
     bm.print_meta().await;
 
-    loop {
-        if bm.get_start_time().await.unwrap() < get_current_unix() {
-            info!("public mint start ------------- let's get start");
-            break;
-        }
+    // loop {
+    //     if bm.get_start_time().await.unwrap() < get_current_unix() {
+    //         info!("public mint start ------------- let's get start");
+    //         break;
+    //     }
 
-        // TODO change for wl og mint
-        // if bm.get_start_time_wl().await.unwrap() < get_current_unix() {
-        //     println!("白名单销售开始-------------不执行抢购");
-        // }
+    //     // TODO change for wl og mint
+    //     // if bm.get_start_time_wl().await.unwrap() < get_current_unix() {
+    //     //     println!("白名单销售开始-------------不执行抢购");
+    //     // }
 
-        tokio::time::sleep(Duration::from_secs(1)).await;
-    }
+    //     tokio::time::sleep(Duration::from_secs(1)).await;
+    // }
 
     let mut handles = vec![];
     for account in accounts {
