@@ -7,7 +7,7 @@ pub struct Key {
     pub address: String,
     pub private: String,
     pub mnemonic: String,
-    pub balance: String,
+    pub balance: u64,
     pub seq: u64,
 }
 
@@ -17,7 +17,7 @@ pub struct KeyWithId {
     pub address: String,
     pub private: String,
     pub mnemonic: String,
-    pub balance: String,
+    pub balance: u64,
     pub seq: u64,
 }
 
@@ -62,13 +62,29 @@ impl Db {
     }
 
     pub fn gen_account(&self, number: &u64) -> Result<()> {
+        // let f = File::open("keys.txt")?;
+        // let br = BufReader::new(f);
+
+        // for (idx, line) in br.lines().enumerate() {
+        //     if let Ok(l) = line {
+        //         let a: Vec<&str> = l.split('|').collect();
+        //         let k = Key {
+        //             address: a[0].to_string(),
+        //             private: a[1].to_string(),
+        //             mnemonic: "".to_string(),
+        //             balance: "0".to_string(),
+        //             seq: 0,
+        //         };
+        //         self.insert(&k)?;
+        //     }
+        // }
         for _ in 0..*number {
             let acc = LocalAccount::generate(&mut rand::rngs::OsRng);
             let k = Key {
                 address: acc.address().to_string(),
                 private: hex::encode(acc.private_key().to_bytes()),
                 mnemonic: "".to_string(),
-                balance: "0".to_string(),
+                balance: 0,
                 seq: 0,
             };
             self.insert(&k)?;
@@ -104,10 +120,11 @@ impl Db {
     }
 
     // update seq number
-    pub fn update(&self, id: u64, seq: u64) -> Result<()> {
-        let l = self
-            .conn
-            .execute("UPDATE keys set seq = ?1 where id = ?2", (seq, id))?;
+    pub fn update(&self, id: u64, balance: u64, seq: u64) -> Result<()> {
+        self.conn.execute(
+            "UPDATE keys set seq = ?1,balance = ?2 where id = ?3",
+            (seq, balance, id),
+        )?;
 
         Ok(())
     }
