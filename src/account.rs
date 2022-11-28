@@ -1,6 +1,6 @@
-use std::fs::File;
-use std::io::{prelude::*, BufReader};
+use futures::future::join_all;
 use std::time::{SystemTime, UNIX_EPOCH};
+use tokio::runtime::Handle;
 use tracing::info;
 
 use anyhow::{anyhow, Context, Result};
@@ -15,57 +15,21 @@ use aptos_sdk::types::chain_id::ChainId;
 use aptos_sdk::types::LocalAccount;
 use aptos_sdk::types::{transaction::*, AccountKey};
 
-pub fn gen_account(number: &u64) -> Result<()> {
-    let mut f = File::create("keys.txt")?;
-    for _ in 0..*number {
-        let acc = LocalAccount::generate(&mut rand::rngs::OsRng);
-        let a = format!(
-            "0x{}|{}\n",
-            acc.address(),
-            hex::encode(acc.private_key().to_bytes())
-        );
-        f.write_all(a.as_bytes())?;
-    }
-
-    Ok(())
-}
-
-pub fn get_account(number: u64) -> Result<(Vec<String>, Vec<String>)> {
-    let f = File::open("keys.txt")?;
-    let br = BufReader::new(f);
-    let mut addr = vec![];
-    let mut pri = vec![];
-
-    for (idx, line) in br.lines().enumerate() {
-        if idx >= number as usize {
-            break;
-        }
-
-        if let Ok(l) = line {
-            let a: Vec<&str> = l.split('|').collect();
-            addr.push(a[0].to_string());
-            pri.push(a[1].to_string());
-        }
-    }
-
-    Ok((addr, pri))
-}
+use super::db::*;
 
 pub async fn transfer(
     rest_client: &Client,
-    count: &u64,
+    accounts: Vec<KeyWithId>,
     amount: &u64,
     chain_id: &u8,
     gas_limit: &u64,
     gas_price: &u64,
 ) -> Result<()> {
-    let (accounts, _) = get_account(*count)?;
-
     let mut addresses = vec![];
-
     let mut amounts = vec![];
+
     for account in accounts.into_iter() {
-        addresses.push(AccountAddress::from_hex_literal(&account)?);
+        addresses.push(AccountAddress::from_hex_literal(&account.address)?);
         amounts.push(amount);
     }
 
@@ -89,7 +53,7 @@ pub async fn transfer(
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs()
-            + 100,
+            + 1000,
         ChainId::new(*chain_id),
     )
     .sender(sender.address())
@@ -100,11 +64,47 @@ pub async fn transfer(
     let signed_txn = sender.sign_with_transaction_builder(transaction_builder);
     let pending = rest_client.submit(&signed_txn).await?.into_inner();
     info!("submit at: {}", pending.hash);
-    let wait = rest_client.wait_for_transaction(&pending).await.unwrap();
 
+    let wait = rest_client.wait_for_transaction(&pending).await.unwrap();
     if wait.into_inner().success() {
         Ok(())
     } else {
         Err(anyhow!("Not successful pls check!!!"))
     }
+}
+
+pub async fn update_accounts(
+    rest_client: &Client,
+    accounts: Vec<KeyWithId>,
+) -> Result<Vec<KeyWithId>> {
+    let mut handles = vec![];
+    // works
+    for acc in accounts {
+        let c = rest_client.clone();
+        //let d = db.clone();
+        handles.push(tokio::spawn(async move { update(c, acc).await.unwrap() }));
+    }
+
+    let mut accs = vec![];
+    for handle in handles {
+        accs.push(handle.await?)
+    }
+
+    Ok(accs)
+}
+
+async fn update(client: Client, mut account: KeyWithId) -> Result<KeyWithId> {
+    let addr = AccountKey::from_private_key(Ed25519PrivateKey::try_from(
+        hex::decode(account.private.clone())?.as_slice(),
+    )?);
+
+    let account_address = addr.authentication_key().derived_address();
+    let acct = client.get_account(account_address).await?;
+    let seq = acct.inner().sequence_number;
+
+    //db.update(account.id, seq);
+
+    account.seq = seq;
+
+    Ok(account)
 }

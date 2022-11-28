@@ -15,6 +15,7 @@ use aptos_sdk::types::transaction::*;
 use aptos_sdk::types::AccountKey;
 use aptos_sdk::types::LocalAccount;
 
+use crate::db::KeyWithId;
 use crate::utils::*;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -351,14 +352,14 @@ impl BlueMove {
         wait.into_inner().success()
     }
 
-    pub async fn buy_with_account(&self, private_key: String, items_number: u64) {
+    pub async fn buy_with_account(&self, private_key: String, seq: u64, items_number: u64) {
         let addr = AccountKey::from_private_key(
             Ed25519PrivateKey::try_from(hex::decode(private_key).unwrap().as_slice()).unwrap(),
         );
 
         let account = addr.authentication_key().derived_address();
-        let acct = self.client.get_account(account).await.unwrap();
-        let mut alice = LocalAccount::new(account, addr, acct.into_inner().sequence_number);
+        //let acct = self.client.get_account(account).await.unwrap();
+        let mut alice = LocalAccount::new(account, addr, seq);
 
         println!(
             "Addcount: 0x{} \nBalance: {}",
@@ -385,19 +386,18 @@ impl BlueMove {
 
 pub async fn buy_nft(
     client: Client,
+    accounts: Vec<KeyWithId>,
     contract: String,
     chain_id: u8,
     gas_limit: u64,
     gas_price: u64,
     number: u64,
-    private_keys: Vec<String>,
 ) {
     let addr = contract;
 
     let mut bm = BlueMove::new(client, addr, chain_id, gas_limit, gas_price).await;
     bm.print_meta().await;
 
-    // wait to start......
     loop {
         if bm.get_start_time().await.unwrap() < get_current_unix() {
             info!("public mint start ------------- let's get start");
@@ -413,10 +413,11 @@ pub async fn buy_nft(
     }
 
     let mut handles = vec![];
-    for private in private_keys {
+    for account in accounts {
         let b = bm.clone();
         handles.push(tokio::spawn(async move {
-            b.buy_with_account(private, number).await
+            b.buy_with_account(account.private, account.seq, number)
+                .await
         }));
     }
 
