@@ -100,11 +100,19 @@ async fn update(client: Client, mut account: KeyWithId) -> Result<KeyWithId> {
 
     let account_address = addr.authentication_key().derived_address();
     let acct = client.get_account(account_address).await?;
+    let alice = LocalAccount::new(account_address, addr, 0);
     let seq = acct.inner().sequence_number;
 
-    //db.update(account.id, seq);
+    account.balance = *client
+        .get_account_balance(alice.address())
+        .await
+        .unwrap()
+        .into_inner()
+        .coin
+        .value
+        .inner();
 
     account.seq = seq;
-
+    info!("{:?}", account);
     Ok(account)
 }
