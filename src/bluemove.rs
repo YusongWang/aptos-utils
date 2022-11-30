@@ -1,7 +1,10 @@
+use anyhow::Result;
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use tracing::info;
+use tokio::sync::broadcast;
+use tokio::sync::broadcast::Receiver;
+use tracing::{error, info};
 
 use aptos_sdk::bcs;
 use aptos_sdk::crypto::ed25519::Ed25519PrivateKey;
@@ -322,16 +325,21 @@ impl BlueMove {
             .map(|mint_data| mint_data.expired_time_wl.parse::<u64>().unwrap() / 1000)
     }
 
-    pub async fn buy_bluemove_mft(&self, account: &mut LocalAccount, items_number: u64) -> bool {
+    pub async fn buy_bluemove_mft(
+        &self,
+        account: &mut LocalAccount,
+        mut rx: Receiver<i32>,
+        items_number: u64,
+    ) -> Result<()> {
         let transaction_builder = TransactionBuilder::new(
             TransactionPayload::EntryFunction(EntryFunction::new(
                 ModuleId::new(
-                    AccountAddress::from_hex_literal(self.contract_address.as_str()).unwrap(),
-                    Identifier::new("factory").unwrap(),
+                    AccountAddress::from_hex_literal(self.contract_address.as_str())?,
+                    Identifier::new("factory")?,
                 ),
-                Identifier::new("mint_with_quantity").unwrap(),
+                Identifier::new("mint_with_quantity")?,
                 vec![],
-                vec![bcs::to_bytes(&items_number).unwrap()],
+                vec![bcs::to_bytes(&items_number)?],
             )),
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
@@ -347,49 +355,52 @@ impl BlueMove {
 
         let signed_txn = account.sign_with_transaction_builder(transaction_builder);
 
-        let res = self
+        // let res = self
+        //     .client
+        //     .simulate_bcs_with_gas_estimation(&signed_txn, true, true)
+        //     .await
+        //     .unwrap();
+
+        // if *res.inner().info.status() != ExecutionStatus::Success {
+        //     info!("faild.");
+
+        //     dbg!(&res.inner().info);
+        // }
+        let _ = rx.recv().await?;
+
+        let pending = self.client.submit(&signed_txn).await?.into_inner();
+        info!("submit at: 0x{}", pending.hash);
+        let wait = self
             .client
-            .simulate_bcs_with_gas_estimation(&signed_txn, true, true)
-            .await
-            .unwrap();
-        if *res.inner().info.status() != ExecutionStatus::Success {
-            info!("faild.");
-
-            dbg!(&res.inner().info);
+            .wait_for_transaction(&pending)
+            .await?
+            .into_inner();
+        if wait.success() {
+            Ok(())
+        } else {
+            anyhow::bail!("fail to mint")
         }
-
-        true
-        // let pending = self.client.submit(&signed_txn).await.unwrap().into_inner();
-        // info!("submit at: 0x{}", pending.hash);
-        // let wait = self.client.wait_for_transaction(&pending).await.unwrap();
-        // wait.into_inner().success()
     }
 
-    pub async fn buy_with_account(&self, private_key: String, seq: u64, items_number: u64) {
+    pub async fn buy_with_account(
+        &self,
+        private_key: String,
+        rx: Receiver<i32>,
+        seq: u64,
+        items_number: u64,
+    ) {
         let addr = AccountKey::from_private_key(
             Ed25519PrivateKey::try_from(hex::decode(private_key).unwrap().as_slice()).unwrap(),
         );
 
         let account = addr.authentication_key().derived_address();
-        //let acct = self.client.get_account(account).await.unwrap();
         let mut alice = LocalAccount::new(account, addr, seq);
 
-        println!(
-            "Addcount: 0x{} \nBalance: {}",
-            account,
-            *self
-                .client
-                .get_account_balance(alice.address())
-                .await
-                .unwrap()
-                .into_inner()
-                .coin
-                .value
-                .inner() as f64
-                / 100000000.00
-        );
-
-        if self.buy_bluemove_mft(&mut alice, items_number).await {
+        if self
+            .buy_bluemove_mft(&mut alice, rx, items_number)
+            .await
+            .is_ok()
+        {
             info!("Acct: {} Buy success for {}", account, items_number);
         } else {
             info!("Buy Nft Faild...");
@@ -411,28 +422,38 @@ pub async fn buy_nft(
     let mut bm = BlueMove::new(client, addr, chain_id, gas_limit, gas_price).await;
     bm.print_meta().await;
 
-    // loop {
-    //     if bm.get_start_time().await.unwrap() < get_current_unix() {
-    //         info!("public mint start ------------- let's get start");
-    //         break;
-    //     }
+    let (tx, _) = broadcast::channel::<i32>(1);
 
-    //     // TODO change for wl og mint
-    //     // if bm.get_start_time_wl().await.unwrap() < get_current_unix() {
-    //     //     println!("白名单销售开始-------------不执行抢购");
-    //     // }
+    let tx1 = tx.clone();
+    let bml = bm.clone();
+    let a = tokio::spawn(async move {
+        let mut handles = vec![];
+        for account in accounts {
+            let b = bml.clone();
+            let rx = tx1.subscribe();
+            handles.push(tokio::spawn(async move {
+                b.buy_with_account(account.private, rx, account.seq, number)
+                    .await
+            }));
+        }
 
-    //     tokio::time::sleep(Duration::from_secs(1)).await;
-    // }
+        let _ = join_all(handles).await;
+    });
 
-    let mut handles = vec![];
-    for account in accounts {
-        let b = bm.clone();
-        handles.push(tokio::spawn(async move {
-            b.buy_with_account(account.private, account.seq, number)
-                .await
-        }));
-    }
+    let b = tokio::spawn(async move {
+        loop {
+            if bm.get_start_time().await.unwrap() < get_current_unix() {
+                info!("public mint start ------------- let's get start");
+                tx.send(1).unwrap();
+                break;
+            }
 
-    let _ = join_all(handles).await;
+            // TODO change for wl og mint
+            // if bm.get_start_time_wl().await.unwrap() < get_current_unix() {
+            //     println!("白名单销售开始-------------不执行抢购");
+            // }
+        }
+    });
+
+    let (_, _) = tokio::join!(a, b);
 }
