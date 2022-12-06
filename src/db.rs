@@ -39,7 +39,7 @@ impl Db {
             address  TEXT NOT NULL,
             private  TEXT NOT NULL,
             mnemonic TEXT NOT NULL,
-            balance  TEXT NOT NULL,
+            balance  INTEGER NOT NULL,
             seq      INTEGER NOT NULL
         )",
             (), // empty list of parameters.
@@ -81,7 +81,7 @@ impl Db {
         for _ in 0..*number {
             let acc = LocalAccount::generate(&mut rand::rngs::OsRng);
             let k = Key {
-                address: format!("0x{}", acc.address().to_string()),
+                address: format!("0x{}", acc.address()),
                 private: hex::encode(acc.private_key().to_bytes()),
                 mnemonic: "".to_string(),
                 balance: 0,

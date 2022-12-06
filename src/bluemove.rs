@@ -1,10 +1,11 @@
 use anyhow::Result;
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use tokio::sync::broadcast;
-use tokio::sync::broadcast::Receiver;
-use tracing::{error, info};
+use tokio::sync::broadcast::{Receiver, Sender};
+use tracing::{info};
 
 use aptos_sdk::bcs;
 use aptos_sdk::crypto::ed25519::Ed25519PrivateKey;
@@ -363,11 +364,11 @@ impl BlueMove {
 
         // if *res.inner().info.status() != ExecutionStatus::Success {
         //     info!("faild.");
-
         //     dbg!(&res.inner().info);
         // }
-        let _ = rx.recv().await?;
 
+        info!("Worker Signer success wait for singel to push to chain!");
+        let _ = rx.recv().await?;
         let pending = self.client.submit(&signed_txn).await?.into_inner();
         info!("submit at: 0x{}", pending.hash);
         let wait = self
@@ -396,14 +397,10 @@ impl BlueMove {
         let account = addr.authentication_key().derived_address();
         let mut alice = LocalAccount::new(account, addr, seq);
 
-        if self
-            .buy_bluemove_mft(&mut alice, rx, items_number)
-            .await
-            .is_ok()
-        {
-            info!("Acct: {} Buy success for {}", account, items_number);
+        if let Err(msg) = self.buy_bluemove_mft(&mut alice, rx, items_number).await {
+            info!("Buy Nft Faild... {}", msg);
         } else {
-            info!("Buy Nft Faild...");
+            info!("Account: {} buy success for {} nfts", account, items_number);
         }
     }
 }
@@ -423,37 +420,62 @@ pub async fn buy_nft(
     bm.print_meta().await;
 
     let (tx, _) = broadcast::channel::<i32>(1);
-
     let tx1 = tx.clone();
-    let bml = bm.clone();
-    let a = tokio::spawn(async move {
-        let mut handles = vec![];
-        for account in accounts {
-            let b = bml.clone();
-            let rx = tx1.subscribe();
-            handles.push(tokio::spawn(async move {
-                b.buy_with_account(account.private, rx, account.seq, number)
-                    .await
-            }));
-        }
 
-        let _ = join_all(handles).await;
-    });
+    let mut handles = vec![];
+    for account in accounts {
+        let rx = tx1.subscribe();
+        let bml = bm.clone();
+        handles.push(buy_with_account(
+            bml,
+            account.private,
+            rx,
+            account.seq,
+            number,
+        ));
+    }
 
-    let b = tokio::spawn(async move {
-        loop {
-            if bm.get_start_time().await.unwrap() < get_current_unix() {
-                info!("public mint start ------------- let's get start");
-                tx.send(1).unwrap();
+    // let wait_to_time = async move {
+
+    //     Ok(())
+    // };
+
+    //handles.push(wait_time(bm,tx));
+    let (_, _) = tokio::join!(join_all(handles), wait_time(bm, tx));
+
+    // select!{
+    //     _ = join_all(handles) => {
+    //         info!("Mint done. check the results !! ");
+    //     },
+    //     _ = wait_time(bm,tx) => {
+    //         info!("Send Channel success let's mint publish to chain");
+    //     }
+    // }
+}
+
+async fn buy_with_account(
+    bm: BlueMove,
+    private_key: String,
+    rx: Receiver<i32>,
+    seq: u64,
+    number: u64,
+) {
+    bm.buy_with_account(private_key, rx, seq, number).await;
+}
+
+async fn wait_time(mut bm: BlueMove, tx: Sender<i32>) -> () {
+    loop {
+        if bm.get_start_time().await.unwrap() < get_current_unix() {
+            info!("public mint start ------------- let's get start");
+            if tx.send(1).is_ok() {
                 break;
             }
-
-            // TODO change for wl og mint
-            // if bm.get_start_time_wl().await.unwrap() < get_current_unix() {
-            //     println!("白名单销售开始-------------不执行抢购");
-            // }
         }
-    });
+        // TODO change for wl og mint
+        // if bm.get_start_time_wl().await.unwrap() < get_current_unix() {
+        //     println!("白名单销售开始-------------不执行抢购");
+        // }
+    }
 
-    let (_, _) = tokio::join!(a, b);
+    info!("Finesh send to works. wait workers start");
 }
