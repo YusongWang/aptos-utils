@@ -81,9 +81,9 @@ impl Cli {
             }
             Commands::Update { start, count } => {
                 let accounts = db.get_account(*start, *count)?;
-                let accounts = update_accounts(&client,accounts).await?;
+                let accounts = update_accounts(&client, accounts).await?;
                 for account in accounts {
-                    db.update(account.id, account.seq)?;
+                    db.update(account.id, account.balance, account.seq)?;
                 }
             }
             Commands::Blue {
