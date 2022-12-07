@@ -5,7 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::{Receiver, Sender};
-use tracing::{info};
+use tracing::info;
 
 use aptos_sdk::bcs;
 use aptos_sdk::crypto::ed25519::Ed25519PrivateKey;
@@ -268,13 +268,13 @@ impl BlueMove {
     pub async fn get_start_time(&mut self) -> Option<u64> {
         self.mint_data
             .as_ref()
-            .map(|mint_data| mint_data.start_time.parse::<u64>().unwrap() / 1000 - 3)
+            .map(|mint_data| mint_data.start_time.parse::<u64>().unwrap() / 1000 - 1)
     }
 
     pub async fn get_start_time_wl(&mut self) -> Option<u64> {
         self.mint_data
             .as_ref()
-            .map(|mint_data| mint_data.start_time_wl.parse::<u64>().unwrap() / 1000 - 3)
+            .map(|mint_data| mint_data.start_time_wl.parse::<u64>().unwrap() / 1000 - 1)
     }
 
     pub async fn print_meta(&mut self) {
